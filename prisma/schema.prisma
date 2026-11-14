@@ -1,0 +1,1934 @@
+// Modelo de dados da clínica. Nomes no vocabulário da clínica, em português.
+// Dinheiro sempre em centavos inteiros. Datas em UTC; a exibição usa America/Sao_Paulo.
+// Regras que o Prisma não expressa (agenda sem choque, prontuário imutável, auditoria só-inserção)
+// ficam em SQL dentro das migrações.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Organização e acesso ─────────────────────────
+
+enum Perfil {
+  ADMIN
+  VETERINARIO
+  RECEPCAO
+  FINANCEIRO
+  ESTOQUE
+  BANHO_TOSA
+}
+
+enum TipoSala {
+  CONSULTORIO
+  CIRURGIA
+  IMAGEM
+  BANHO_TOSA
+  INTERNACAO
+  HOTEL
+}
+
+model Clinica {
+  id              String   @id @default(cuid())
+  nome            String
+  razaoSocial     String?
+  cnpj            String?
+  telefone        String?
+  whatsappPlantao String?
+  email           String?
+  site            String?
+  slogan          String?
+  criadoEm        DateTime @default(now())
+
+  unidades Unidade[]
+}
+
+model Unidade {
+  id         String  @id @default(cuid())
+  clinicaId  String
+  clinica    Clinica @relation(fields: [clinicaId], references: [id])
+  nome       String
+  slug       String  @unique
+  endereco   String
+  bairro     String?
+  cidade     String
+  uf         String
+  cep        String?
+  latitude   Float?
+  longitude  Float?
+  telefone   String?
+  whatsapp   String?
+  /// Horário por dia da semana: [{ dia: 0-6, abre: "08:00", fecha: "20:00" }]
+  horarios   Json
+  plantao24h Boolean @default(false)
+  ativa      Boolean @default(true)
+
+  salas               Sala[]
+  usuarioUnidades     UsuarioUnidade[]
+  horarioTrabalhos    HorarioTrabalho[]
+  bloqueios           Bloqueio[]
+  agendamentos        Agendamento[]
+  filaEsperas         FilaEspera[]
+  atendimentos        Atendimento[]
+  cirurgias           Cirurgia[]
+  baias               Baia[]
+  internacaos         Internacao[]
+  hospedagems         Hospedagem[]
+  lotes               Lote[]
+  movimentoEstoques   MovimentoEstoque[]
+  compras             Compra[]
+  registroControlados RegistroControlado[]
+  orcamentos          Orcamento[]
+  vendas              Venda[]
+  caixas              Caixa[]
+  lancamentos         Lancamento[]
+  notaFiscals         NotaFiscal[]
+  ambientes           Ambiente[]
+}
+
+model Sala {
+  id           String        @id @default(cuid())
+  unidadeId    String
+  unidade      Unidade       @relation(fields: [unidadeId], references: [id])
+  nome         String
+  sigla        String
+  tipo         TipoSala
+  ativa        Boolean       @default(true)
+  bloqueios    Bloqueio[]
+  agendamentos Agendamento[]
+  cirurgias    Cirurgia[]
+
+  @@unique([unidadeId, sigla])
+}
+
+model Usuario {
+  id             String   @id @default(cuid())
+  nome           String
+  email          String   @unique
+  senhaHash      String
+  telefone       String?
+  crmv           String?
+  especialidades String[]
+  bio            String?
+  fotoUrl        String?
+  slug           String?  @unique
+  exibirNoSite   Boolean  @default(false)
+  corAgenda      String?
+  ativo          Boolean  @default(true)
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  perfis                   PerfilUsuario[]
+  agendamentosProfissional Agendamento[]         @relation("AgendamentoProfissional")
+  agendamentosCriados      Agendamento[]         @relation("AgendamentoCriadoPor")
+  registrosAutor           RegistroProntuario[]  @relation("RegistroAutor")
+  registrosAssinados       RegistroProntuario[]  @relation("RegistroAssinante")
+  cirurgiasCirurgiao       Cirurgia[]            @relation("CirurgiaCirurgiao")
+  cirurgiasAnestesista     Cirurgia[]            @relation("CirurgiaAnestesista")
+  fichasEntrada            FichaEntradaSaida[]   @relation("FichaEntrada")
+  fichasSaida              FichaEntradaSaida[]   @relation("FichaSaida")
+  usuarioUnidades          UsuarioUnidade[]
+  sessaos                  Sessao[]
+  doisFatores              DoisFatores?
+  logAuditorias            LogAuditoria[]
+  pesoRegistros            PesoRegistro[]
+  profissionalServicos     ProfissionalServico[]
+  horarioTrabalhos         HorarioTrabalho[]
+  bloqueios                Bloqueio[]
+  filaEsperas              FilaEspera[]
+  atendimentos             Atendimento[]
+  anexos                   Anexo[]
+  assinaturas              Assinatura[]
+  receitas                 Receita[]
+  aplicacaos               Aplicacao[]
+  examePedidos             ExamePedido[]
+  exameResultados          ExameResultado[]
+  posOperatorios           PosOperatorio[]
+  internacaos              Internacao[]
+  prescricaos              Prescricao[]
+  administracaos           Administracao[]
+  boletimDiarios           BoletimDiario[]
+  movimentoEstoques        MovimentoEstoque[]
+  compras                  Compra[]
+  registroControlados      RegistroControlado[]
+  orcamentos               Orcamento[]
+  vendas                   Venda[]
+  vendaItems               VendaItem[]
+  caixas                   Caixa[]
+  movimentoCaixas          MovimentoCaixa[]
+  regraComissaos           RegraComissao[]
+  comissaos                Comissao[]
+  campanhas                Campanha[]
+  posts                    Post[]
+}
+
+model PerfilUsuario {
+  id        String  @id @default(cuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  perfil    Perfil
+
+  @@unique([usuarioId, perfil])
+}
+
+model UsuarioUnidade {
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  unidadeId String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+
+  @@id([usuarioId, unidadeId])
+}
+
+model Sessao {
+  id            String       @id @default(cuid())
+  tokenHash     String       @unique
+  usuarioId     String?
+  usuario       Usuario?     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  contaPortalId String?
+  contaPortal   ContaPortal? @relation(fields: [contaPortalId], references: [id], onDelete: Cascade)
+  doisFatoresOk Boolean      @default(false)
+  ip            String?
+  userAgent     String?
+  criadoEm      DateTime     @default(now())
+  expiraEm      DateTime
+
+  @@index([expiraEm])
+}
+
+model DoisFatores {
+  id                 String    @id @default(cuid())
+  usuarioId          String    @unique
+  usuario            Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  segredoCifrado     String
+  ativadoEm          DateTime?
+  codigosRecuperacao String[]
+}
+
+/// Só aceita inserção (gatilho no banco bloqueia UPDATE e DELETE).
+model LogAuditoria {
+  id         BigInt   @id @default(autoincrement())
+  usuarioId  String?
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
+  unidadeId  String?
+  acao       String
+  entidade   String
+  entidadeId String?
+  antes      Json?
+  depois     Json?
+  ip         String?
+  criadoEm   DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+  @@index([criadoEm])
+}
+
+// ───────────────────────── Tutores e pets ─────────────────────────
+
+enum Sexo {
+  MACHO
+  FEMEA
+  INDEFINIDO
+}
+
+enum GravidadeAlergia {
+  LEVE
+  MODERADA
+  GRAVE
+}
+
+enum TipoConsentimento {
+  TRATAMENTO_DADOS
+  COMUNICACAO_WHATSAPP
+  COMUNICACAO_EMAIL
+  MARKETING
+}
+
+enum TipoPedidoLgpd {
+  EXPORTACAO
+  EXCLUSAO
+  CORRECAO
+}
+
+enum StatusPedido {
+  ABERTO
+  CONCLUIDO
+  RECUSADO
+}
+
+model Tutor {
+  id             String    @id @default(cuid())
+  nome           String
+  cpf            String?   @unique
+  email          String?
+  telefone       String?
+  whatsapp       String?
+  endereco       String?
+  bairro         String?
+  cidade         String?
+  uf             String?
+  cep            String?
+  nascimento     DateTime? @db.Date
+  observacoes    String?
+  aceitaWhatsapp Boolean   @default(true)
+  aceitaEmail    Boolean   @default(true)
+  anonimizadoEm  DateTime?
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+
+  pets                Pet[]
+  contaPortal         ContaPortal?
+  consentimentos      Consentimento[]
+  pedidoLgpds         PedidoLgpd[]
+  agendamentos        Agendamento[]
+  filaEsperas         FilaEspera[]
+  termoConsentimentos TermoConsentimento[]
+  pacoteCreditos      PacoteCredito[]
+  hospedagems         Hospedagem[]
+  orcamentos          Orcamento[]
+  vendas              Venda[]
+  lancamentos         Lancamento[]
+  contratoes          Contrato[]
+  mensagems           Mensagem[]
+
+  @@index([nome])
+  @@index([telefone])
+  @@index([email])
+}
+
+model ContaPortal {
+  id           String    @id @default(cuid())
+  tutorId      String    @unique
+  tutor        Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  email        String    @unique
+  senhaHash    String?
+  verificadoEm DateTime?
+  ultimoAcesso DateTime?
+  criadoEm     DateTime  @default(now())
+  sessaos      Sessao[]
+}
+
+model Especie {
+  id   String @id @default(cuid())
+  nome String @unique
+
+  racas             Raca[]
+  pets              Pet[]
+  protocoloVacinals ProtocoloVacinal[]
+}
+
+model Raca {
+  id        String  @id @default(cuid())
+  especieId String
+  especie   Especie @relation(fields: [especieId], references: [id])
+  nome      String
+  pets      Pet[]
+
+  @@unique([especieId, nome])
+}
+
+model Pet {
+  id           String    @id @default(cuid())
+  tutorId      String
+  tutor        Tutor     @relation(fields: [tutorId], references: [id])
+  nome         String
+  especieId    String
+  especie      Especie   @relation(fields: [especieId], references: [id])
+  racaId       String?
+  raca         Raca?     @relation(fields: [racaId], references: [id])
+  sexo         Sexo      @default(INDEFINIDO)
+  castrado     Boolean?
+  nascimento   DateTime? @db.Date
+  pelagem      String?
+  microchip    String?   @unique
+  fotoUrl      String?
+  observacoes  String?
+  obitoEm      DateTime?
+  ativo        Boolean   @default(true)
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+
+  alergias            PetAlergia[]
+  pesos               PesoRegistro[]
+  agendamentos        Agendamento[]
+  filaEsperas         FilaEspera[]
+  atendimentos        Atendimento[]
+  registroProntuarios RegistroProntuario[]
+  anexos              Anexo[]
+  receitas            Receita[]
+  aplicacaos          Aplicacao[]
+  examePedidos        ExamePedido[]
+  cirurgias           Cirurgia[]
+  termoConsentimentos TermoConsentimento[]
+  internacaos         Internacao[]
+  pacoteCreditos      PacoteCredito[]
+  hospedagems         Hospedagem[]
+  fichaEntradaSaidas  FichaEntradaSaida[]
+  registroControlados RegistroControlado[]
+  orcamentos          Orcamento[]
+  vendas              Venda[]
+  contratoes          Contrato[]
+
+  @@index([tutorId])
+  @@index([nome])
+}
+
+model PetAlergia {
+  id         String           @id @default(cuid())
+  petId      String
+  pet        Pet              @relation(fields: [petId], references: [id], onDelete: Cascade)
+  substancia String
+  gravidade  GravidadeAlergia @default(MODERADA)
+  observacao String?
+  criadoEm   DateTime         @default(now())
+}
+
+/// Peso é histórico: a dose usa o último registro e guarda qual foi.
+model PesoRegistro {
+  id         String   @id @default(cuid())
+  petId      String
+  pet        Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  pesoGramas Int
+  medidoEm   DateTime @default(now())
+  usuarioId  String?
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@index([petId, medidoEm])
+}
+
+model Consentimento {
+  id          String            @id @default(cuid())
+  tutorId     String
+  tutor       Tutor             @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tipo        TipoConsentimento
+  concedido   Boolean
+  versaoTexto String
+  origem      String
+  ip          String?
+  criadoEm    DateTime          @default(now())
+
+  @@index([tutorId, tipo])
+}
+
+model PedidoLgpd {
+  id           String         @id @default(cuid())
+  tutorId      String
+  tutor        Tutor          @relation(fields: [tutorId], references: [id])
+  tipo         TipoPedidoLgpd
+  status       StatusPedido   @default(ABERTO)
+  observacao   String?
+  arquivoUrl   String?
+  solicitadoEm DateTime       @default(now())
+  concluidoEm  DateTime?
+}
+
+// ───────────────────────── Agenda ─────────────────────────
+
+enum CategoriaServico {
+  CONSULTA
+  VACINA
+  EXAME
+  CIRURGIA
+  ESTETICA
+  HOSPEDAGEM
+  OUTRO
+}
+
+enum StatusAgendamento {
+  AGENDADO
+  CONFIRMADO
+  CHECKIN
+  EM_ATENDIMENTO
+  CONCLUIDO
+  FALTOU
+  CANCELADO
+}
+
+enum OrigemAgendamento {
+  SITE
+  PORTAL
+  RECEPCAO
+  TELEFONE
+}
+
+enum StatusFila {
+  AGUARDANDO
+  ENCAIXADO
+  DESISTIU
+}
+
+enum RespostaConfirmacao {
+  CONFIRMOU
+  CANCELOU
+}
+
+model Servico {
+  id              String           @id @default(cuid())
+  nome            String
+  slug            String           @unique
+  categoria       CategoriaServico
+  descricao       String?
+  descricaoLonga  String?
+  duracaoMin      Int
+  precoCentavos   Int
+  tipoSala        TipoSala?
+  agendavelOnline Boolean          @default(true)
+  exibirNoSite    Boolean          @default(true)
+  ordem           Int              @default(0)
+  ativo           Boolean          @default(true)
+
+  profissionais   ProfissionalServico[]
+  agendamentos    Agendamento[]
+  filaEsperas     FilaEspera[]
+  pacotes         Pacote[]
+  orcamentoItems  OrcamentoItem[]
+  vendaItems      VendaItem[]
+  regraComissaos  RegraComissao[]
+  planoCoberturas PlanoCobertura[]
+}
+
+model ProfissionalServico {
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  servicoId String
+  servico   Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, servicoId])
+}
+
+/// Minutos contados a partir da meia-noite, no fuso da clínica.
+model HorarioTrabalho {
+  id        String  @id @default(cuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  unidadeId String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+  diaSemana Int
+  inicioMin Int
+  fimMin    Int
+
+  @@index([usuarioId, diaSemana])
+}
+
+model Bloqueio {
+  id        String   @id @default(cuid())
+  unidadeId String
+  unidade   Unidade  @relation(fields: [unidadeId], references: [id])
+  usuarioId String?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  salaId    String?
+  sala      Sala?    @relation(fields: [salaId], references: [id], onDelete: Cascade)
+  inicio    DateTime
+  fim       DateTime
+  motivo    String?
+
+  @@index([inicio, fim])
+}
+
+/// O banco recusa dois agendamentos ativos no mesmo profissional ou sala no mesmo intervalo
+/// (restrição de exclusão na migração). Encaixe é a exceção e fica marcado.
+model Agendamento {
+  id                  String               @id @default(cuid())
+  unidadeId           String
+  unidade             Unidade              @relation(fields: [unidadeId], references: [id])
+  petId               String
+  pet                 Pet                  @relation(fields: [petId], references: [id])
+  tutorId             String
+  tutor               Tutor                @relation(fields: [tutorId], references: [id])
+  servicoId           String
+  servico             Servico              @relation(fields: [servicoId], references: [id])
+  profissionalId      String?
+  profissional        Usuario?             @relation("AgendamentoProfissional", fields: [profissionalId], references: [id])
+  salaId              String?
+  sala                Sala?                @relation(fields: [salaId], references: [id])
+  inicio              DateTime
+  fim                 DateTime
+  status              StatusAgendamento    @default(AGENDADO)
+  encaixe             Boolean              @default(false)
+  origem              OrigemAgendamento    @default(RECEPCAO)
+  observacoes         String?
+  checkinEm           DateTime?
+  inicioAtendimentoEm DateTime?
+  concluidoEm         DateTime?
+  canceladoEm         DateTime?
+  motivoCancelamento  String?
+  criadoPorId         String?
+  criadoPor           Usuario?             @relation("AgendamentoCriadoPor", fields: [criadoPorId], references: [id])
+  criadoEm            DateTime             @default(now())
+  atualizadoEm        DateTime             @updatedAt
+  confirmacaoPresenca ConfirmacaoPresenca?
+  atendimento         Atendimento?
+  cirurgia            Cirurgia?
+  fichaEntradaSaida   FichaEntradaSaida?
+  mensagems           Mensagem[]
+
+  @@index([unidadeId, inicio])
+  @@index([profissionalId, inicio])
+  @@index([petId])
+  @@index([tutorId])
+}
+
+model FilaEspera {
+  id             String     @id @default(cuid())
+  unidadeId      String
+  unidade        Unidade    @relation(fields: [unidadeId], references: [id])
+  petId          String
+  pet            Pet        @relation(fields: [petId], references: [id])
+  tutorId        String
+  tutor          Tutor      @relation(fields: [tutorId], references: [id])
+  servicoId      String
+  servico        Servico    @relation(fields: [servicoId], references: [id])
+  profissionalId String?
+  profissional   Usuario?   @relation(fields: [profissionalId], references: [id])
+  preferencia    String?
+  de             DateTime?
+  ate            DateTime?
+  status         StatusFila @default(AGUARDANDO)
+  criadoEm       DateTime   @default(now())
+}
+
+model ConfirmacaoPresenca {
+  id            String               @id @default(cuid())
+  agendamentoId String               @unique
+  agendamento   Agendamento          @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+  token         String               @unique
+  enviadoEm     DateTime?
+  respondidoEm  DateTime?
+  resposta      RespostaConfirmacao?
+}
+
+// ───────────────────────── Prontuário ─────────────────────────
+
+enum TipoAtendimento {
+  CONSULTA
+  RETORNO
+  VACINA
+  EMERGENCIA
+  CIRURGIA
+  INTERNACAO
+  EXAME
+}
+
+enum StatusAtendimento {
+  ABERTO
+  FINALIZADO
+}
+
+enum TipoRegistro {
+  ANAMNESE
+  EXAME_FISICO
+  DIAGNOSTICO
+  EVOLUCAO
+  CONDUTA
+  OBSERVACAO
+}
+
+model Atendimento {
+  id                  String               @id @default(cuid())
+  unidadeId           String
+  unidade             Unidade              @relation(fields: [unidadeId], references: [id])
+  petId               String
+  pet                 Pet                  @relation(fields: [petId], references: [id])
+  agendamentoId       String?              @unique
+  agendamento         Agendamento?         @relation(fields: [agendamentoId], references: [id])
+  veterinarioId       String
+  veterinario         Usuario              @relation(fields: [veterinarioId], references: [id])
+  tipo                TipoAtendimento
+  status              StatusAtendimento    @default(ABERTO)
+  pesoGramas          Int?
+  iniciadoEm          DateTime             @default(now())
+  finalizadoEm        DateTime?
+  registroProntuarios RegistroProntuario[]
+  anexos              Anexo[]
+  receitas            Receita[]
+  aplicacaos          Aplicacao[]
+  examePedidos        ExamePedido[]
+  movimentoEstoques   MovimentoEstoque[]
+  vendas              Venda[]
+
+  @@index([petId, iniciadoEm])
+}
+
+/// Registro assinado nunca muda (gatilho no banco). Correção cria nova versão que aponta
+/// para a anterior em substituiId. hash = SHA-256(conteúdo + hashAnterior).
+model RegistroProntuario {
+  id                String              @id @default(cuid())
+  atendimentoId     String
+  atendimento       Atendimento         @relation(fields: [atendimentoId], references: [id])
+  petId             String
+  pet               Pet                 @relation(fields: [petId], references: [id])
+  autorId           String
+  autor             Usuario             @relation("RegistroAutor", fields: [autorId], references: [id])
+  tipo              TipoRegistro
+  conteudo          Json
+  texto             String
+  versao            Int                 @default(1)
+  substituiId       String?             @unique
+  substitui         RegistroProntuario? @relation("RegistroVersao", fields: [substituiId], references: [id])
+  substituidoPor    RegistroProntuario? @relation("RegistroVersao")
+  motivoRetificacao String?
+  hash              String
+  hashAnterior      String?
+  assinadoEm        DateTime?
+  assinadoPorId     String?
+  assinadoPor       Usuario?            @relation("RegistroAssinante", fields: [assinadoPorId], references: [id])
+  criadoEm          DateTime            @default(now())
+  anexos            Anexo[]
+
+  @@index([petId, criadoEm])
+  @@index([atendimentoId])
+}
+
+model ModeloProntuario {
+  id              String          @id @default(cuid())
+  nome            String
+  tipoAtendimento TipoAtendimento
+  tipoRegistro    TipoRegistro
+  /// Lista de campos: [{ chave, rotulo, tipo, opcoes? }]
+  estrutura       Json
+  ativo           Boolean         @default(true)
+}
+
+model Anexo {
+  id               String              @id @default(cuid())
+  petId            String
+  pet              Pet                 @relation(fields: [petId], references: [id])
+  atendimentoId    String?
+  atendimento      Atendimento?        @relation(fields: [atendimentoId], references: [id])
+  registroId       String?
+  registro         RegistroProntuario? @relation(fields: [registroId], references: [id])
+  exameResultadoId String?
+  exameResultado   ExameResultado?     @relation(fields: [exameResultadoId], references: [id])
+  nome             String
+  tipoMime         String
+  tamanhoBytes     Int
+  caminho          String
+  sha256           String
+  enviadoPorId     String
+  enviadoPor       Usuario             @relation(fields: [enviadoPorId], references: [id])
+  criadoEm         DateTime            @default(now())
+
+  @@index([petId])
+}
+
+model Assinatura {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id])
+  entidade      String
+  entidadeId    String
+  hashDocumento String
+  ip            String?
+  criadoEm      DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+}
+
+// ───────────────────────── Receitas, vacinas e exames ─────────────────────────
+
+enum TipoReceita {
+  SIMPLES
+  CONTROLE_ESPECIAL
+}
+
+enum TipoProtocolo {
+  VACINA
+  VERMIFUGO
+  ANTIPARASITARIO
+}
+
+enum CategoriaExame {
+  LABORATORIAL
+  IMAGEM
+  OUTRO
+}
+
+enum StatusExame {
+  SOLICITADO
+  COLETADO
+  EM_ANALISE
+  CONCLUIDO
+  CANCELADO
+}
+
+model Receita {
+  id            String       @id @default(cuid())
+  numero        Int          @unique @default(autoincrement())
+  atendimentoId String?
+  atendimento   Atendimento? @relation(fields: [atendimentoId], references: [id])
+  petId         String
+  pet           Pet          @relation(fields: [petId], references: [id])
+  veterinarioId String
+  veterinario   Usuario      @relation(fields: [veterinarioId], references: [id])
+  tipo          TipoReceita  @default(SIMPLES)
+  pesoGramas    Int?
+  observacoes   String?
+  hash          String?
+  emitidaEm     DateTime     @default(now())
+
+  itens               ReceitaItem[]
+  registroControlados RegistroControlado[]
+
+  @@index([petId, emitidaEm])
+}
+
+model ReceitaItem {
+  id            String   @id @default(cuid())
+  receitaId     String
+  receita       Receita  @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+  produtoId     String?
+  produto       Produto? @relation(fields: [produtoId], references: [id])
+  medicamento   String
+  apresentacao  String?
+  concentracao  String?
+  doseMgKg      Decimal? @db.Decimal(10, 3)
+  doseCalculada String?
+  via           String?
+  frequencia    String?
+  duracao       String?
+  quantidade    String?
+  instrucoes    String?
+  ordem         Int      @default(0)
+}
+
+model ProtocoloVacinal {
+  id        String        @id @default(cuid())
+  nome      String
+  especieId String
+  especie   Especie       @relation(fields: [especieId], references: [id])
+  tipo      TipoProtocolo @default(VACINA)
+  descricao String?
+  ativo     Boolean       @default(true)
+
+  doses      ProtocoloDose[]
+  aplicacaos Aplicacao[]
+}
+
+model ProtocoloDose {
+  id            String           @id @default(cuid())
+  protocoloId   String
+  protocolo     ProtocoloVacinal @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
+  ordem         Int
+  nome          String
+  idadeMinDias  Int?
+  /// Dias até a próxima dose da série; nulo na última.
+  intervaloDias Int?
+  /// Dias até o reforço depois da última dose (365 = anual).
+  reforcoDias   Int?
+
+  @@unique([protocoloId, ordem])
+}
+
+model Aplicacao {
+  id                String            @id @default(cuid())
+  petId             String
+  pet               Pet               @relation(fields: [petId], references: [id])
+  atendimentoId     String?
+  atendimento       Atendimento?      @relation(fields: [atendimentoId], references: [id])
+  protocoloId       String?
+  protocolo         ProtocoloVacinal? @relation(fields: [protocoloId], references: [id])
+  tipo              TipoProtocolo     @default(VACINA)
+  nome              String
+  dose              String?
+  loteId            String?
+  lote              Lote?             @relation(fields: [loteId], references: [id])
+  loteCodigo        String?
+  validade          DateTime?         @db.Date
+  fabricante        String?
+  aplicadoEm        DateTime          @default(now())
+  aplicadoPorId     String
+  aplicadoPor       Usuario           @relation(fields: [aplicadoPorId], references: [id])
+  proximaDoseEm     DateTime?         @db.Date
+  lembreteEnviadoEm DateTime?
+  observacoes       String?
+
+  @@index([petId, aplicadoEm])
+  @@index([proximaDoseEm])
+}
+
+model ExameTipo {
+  id            String         @id @default(cuid())
+  nome          String         @unique
+  categoria     CategoriaExame
+  precoCentavos Int
+  prazoDias     Int?
+  ativo         Boolean        @default(true)
+  examePedidos  ExamePedido[]
+}
+
+model ExamePedido {
+  id            String       @id @default(cuid())
+  petId         String
+  pet           Pet          @relation(fields: [petId], references: [id])
+  atendimentoId String?
+  atendimento   Atendimento? @relation(fields: [atendimentoId], references: [id])
+  exameTipoId   String
+  exameTipo     ExameTipo    @relation(fields: [exameTipoId], references: [id])
+  solicitanteId String
+  solicitante   Usuario      @relation(fields: [solicitanteId], references: [id])
+  status        StatusExame  @default(SOLICITADO)
+  observacoes   String?
+  solicitadoEm  DateTime     @default(now())
+
+  resultado ExameResultado?
+
+  @@index([petId, solicitadoEm])
+}
+
+/// Só aparece no portal do tutor depois de liberado pelo veterinário.
+model ExameResultado {
+  id            String      @id @default(cuid())
+  pedidoId      String      @unique
+  pedido        ExamePedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  laudo         String?
+  liberadoEm    DateTime?
+  liberadoPorId String?
+  liberadoPor   Usuario?    @relation(fields: [liberadoPorId], references: [id])
+  criadoEm      DateTime    @default(now())
+  anexos        Anexo[]
+}
+
+// ───────────────────────── Cirurgia e internação ─────────────────────────
+
+enum StatusCirurgia {
+  AGENDADA
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum PorteBaia {
+  P
+  M
+  G
+}
+
+enum TipoBaia {
+  COMUM
+  ISOLAMENTO
+  UTI
+  HOTEL
+}
+
+enum StatusInternacao {
+  ATIVA
+  ALTA
+  OBITO
+}
+
+enum StatusAdministracao {
+  PENDENTE
+  FEITO
+  NAO_FEITO
+}
+
+model Cirurgia {
+  id                 String         @id @default(cuid())
+  unidadeId          String
+  unidade            Unidade        @relation(fields: [unidadeId], references: [id])
+  petId              String
+  pet                Pet            @relation(fields: [petId], references: [id])
+  agendamentoId      String?        @unique
+  agendamento        Agendamento?   @relation(fields: [agendamentoId], references: [id])
+  cirurgiaoId        String
+  cirurgiao          Usuario        @relation("CirurgiaCirurgiao", fields: [cirurgiaoId], references: [id])
+  anestesistaId      String?
+  anestesista        Usuario?       @relation("CirurgiaAnestesista", fields: [anestesistaId], references: [id])
+  salaId             String?
+  sala               Sala?          @relation(fields: [salaId], references: [id])
+  procedimento       String
+  status             StatusCirurgia @default(AGENDADA)
+  riscoAsa           Int?
+  inicio             DateTime?
+  fim                DateTime?
+  descricaoCirurgica String?
+  intercorrencias    String?
+  criadoEm           DateTime       @default(now())
+
+  fichaAnestesica     FichaAnestesica?
+  posOperatorios      PosOperatorio[]
+  termoConsentimentos TermoConsentimento[]
+}
+
+model TermoConsentimento {
+  id                String      @id @default(cuid())
+  petId             String
+  pet               Pet         @relation(fields: [petId], references: [id])
+  tutorId           String
+  tutor             Tutor       @relation(fields: [tutorId], references: [id])
+  cirurgiaId        String?
+  cirurgia          Cirurgia?   @relation(fields: [cirurgiaId], references: [id])
+  internacaoId      String?
+  internacao        Internacao? @relation(fields: [internacaoId], references: [id])
+  titulo            String
+  texto             String
+  assinadoEm        DateTime?
+  assinadoPorNome   String?
+  assinadoDocumento String?
+  assinaturaImagem  String?
+  ip                String?
+  criadoEm          DateTime    @default(now())
+}
+
+model FichaAnestesica {
+  id          String   @id @default(cuid())
+  cirurgiaId  String   @unique
+  cirurgia    Cirurgia @relation(fields: [cirurgiaId], references: [id], onDelete: Cascade)
+  pesoGramas  Int?
+  jejumHoras  Int?
+  mpa         String?
+  inducao     String?
+  manutencao  String?
+  observacoes String?
+
+  registros RegistroAnestesico[]
+}
+
+model RegistroAnestesico {
+  id          String          @id @default(cuid())
+  fichaId     String
+  ficha       FichaAnestesica @relation(fields: [fichaId], references: [id], onDelete: Cascade)
+  momento     DateTime        @default(now())
+  fc          Int?
+  fr          Int?
+  spo2        Int?
+  temperatura Decimal?        @db.Decimal(4, 1)
+  pas         Int?
+  observacao  String?
+}
+
+model PosOperatorio {
+  id         String    @id @default(cuid())
+  cirurgiaId String
+  cirurgia   Cirurgia  @relation(fields: [cirurgiaId], references: [id], onDelete: Cascade)
+  data       DateTime  @default(now())
+  descricao  String
+  autorId    String
+  autor      Usuario   @relation(fields: [autorId], references: [id])
+  retornoEm  DateTime?
+}
+
+model Baia {
+  id          String       @id @default(cuid())
+  unidadeId   String
+  unidade     Unidade      @relation(fields: [unidadeId], references: [id])
+  codigo      String
+  porte       PorteBaia    @default(M)
+  tipo        TipoBaia     @default(COMUM)
+  ativa       Boolean      @default(true)
+  internacaos Internacao[]
+  hospedagems Hospedagem[]
+
+  @@unique([unidadeId, codigo])
+}
+
+model Internacao {
+  id            String           @id @default(cuid())
+  unidadeId     String
+  unidade       Unidade          @relation(fields: [unidadeId], references: [id])
+  petId         String
+  pet           Pet              @relation(fields: [petId], references: [id])
+  baiaId        String
+  baia          Baia             @relation(fields: [baiaId], references: [id])
+  veterinarioId String
+  veterinario   Usuario          @relation(fields: [veterinarioId], references: [id])
+  motivo        String
+  status        StatusInternacao @default(ATIVA)
+  entradaEm     DateTime         @default(now())
+  altaEm        DateTime?
+  observacoes   String?
+
+  prescricoes         Prescricao[]
+  boletins            BoletimDiario[]
+  termoConsentimentos TermoConsentimento[]
+
+  @@index([status])
+}
+
+model Prescricao {
+  id            String     @id @default(cuid())
+  internacaoId  String
+  internacao    Internacao @relation(fields: [internacaoId], references: [id], onDelete: Cascade)
+  veterinarioId String
+  veterinario   Usuario    @relation(fields: [veterinarioId], references: [id])
+  ativa         Boolean    @default(true)
+  observacoes   String?
+  criadaEm      DateTime   @default(now())
+
+  itens PrescricaoItem[]
+}
+
+model PrescricaoItem {
+  id             String     @id @default(cuid())
+  prescricaoId   String
+  prescricao     Prescricao @relation(fields: [prescricaoId], references: [id], onDelete: Cascade)
+  produtoId      String?
+  produto        Produto?   @relation(fields: [produtoId], references: [id])
+  descricao      String
+  dose           String
+  via            String?
+  intervaloHoras Int
+  inicio         DateTime
+  fim            DateTime?
+
+  administracoes Administracao[]
+}
+
+/// Cada horário da prescrição vira um item de checklist.
+model Administracao {
+  id             String              @id @default(cuid())
+  itemId         String
+  item           PrescricaoItem      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  previstoPara   DateTime
+  status         StatusAdministracao @default(PENDENTE)
+  realizadoEm    DateTime?
+  realizadoPorId String?
+  realizadoPor   Usuario?            @relation(fields: [realizadoPorId], references: [id])
+  observacao     String?
+
+  @@index([previstoPara, status])
+}
+
+model BoletimDiario {
+  id           String     @id @default(cuid())
+  internacaoId String
+  internacao   Internacao @relation(fields: [internacaoId], references: [id], onDelete: Cascade)
+  data         DateTime   @db.Date
+  estadoGeral  String?
+  texto        String
+  autorId      String
+  autor        Usuario    @relation(fields: [autorId], references: [id])
+  enviadoEm    DateTime?
+  criadoEm     DateTime   @default(now())
+
+  @@unique([internacaoId, data])
+}
+
+// ───────────────────────── Banho, tosa, hotel e creche ─────────────────────────
+
+enum TipoHospedagem {
+  HOTEL
+  CRECHE
+}
+
+enum StatusHospedagem {
+  RESERVADA
+  HOSPEDADO
+  ENCERRADA
+  CANCELADA
+}
+
+model Pacote {
+  id             String          @id @default(cuid())
+  nome           String
+  descricao      String?
+  servicoId      String
+  servico        Servico         @relation(fields: [servicoId], references: [id])
+  quantidade     Int
+  validadeDias   Int
+  precoCentavos  Int
+  ativo          Boolean         @default(true)
+  pacoteCreditos PacoteCredito[]
+}
+
+model PacoteCredito {
+  id          String     @id @default(cuid())
+  pacoteId    String
+  pacote      Pacote     @relation(fields: [pacoteId], references: [id])
+  tutorId     String
+  tutor       Tutor      @relation(fields: [tutorId], references: [id])
+  petId       String?
+  pet         Pet?       @relation(fields: [petId], references: [id])
+  vendaItemId String?    @unique
+  vendaItem   VendaItem? @relation(fields: [vendaItemId], references: [id])
+  total       Int
+  usados      Int        @default(0)
+  expiraEm    DateTime
+  criadoEm    DateTime   @default(now())
+}
+
+model Hospedagem {
+  id                String             @id @default(cuid())
+  unidadeId         String
+  unidade           Unidade            @relation(fields: [unidadeId], references: [id])
+  petId             String
+  pet               Pet                @relation(fields: [petId], references: [id])
+  tutorId           String
+  tutor             Tutor              @relation(fields: [tutorId], references: [id])
+  tipo              TipoHospedagem
+  baiaId            String?
+  baia              Baia?              @relation(fields: [baiaId], references: [id])
+  entradaPrevista   DateTime
+  saidaPrevista     DateTime
+  entradaEm         DateTime?
+  saidaEm           DateTime?
+  status            StatusHospedagem   @default(RESERVADA)
+  diariaCentavos    Int
+  alimentacao       String?
+  medicacoes        String?
+  observacoes       String?
+  criadoEm          DateTime           @default(now())
+  fichaEntradaSaida FichaEntradaSaida?
+}
+
+model FichaEntradaSaida {
+  id                   String       @id @default(cuid())
+  petId                String
+  pet                  Pet          @relation(fields: [petId], references: [id])
+  agendamentoId        String?      @unique
+  agendamento          Agendamento? @relation(fields: [agendamentoId], references: [id])
+  hospedagemId         String?      @unique
+  hospedagem           Hospedagem?  @relation(fields: [hospedagemId], references: [id])
+  entradaEm            DateTime     @default(now())
+  condicaoEntrada      String?
+  pertences            String?
+  observacoesEntrada   String?
+  responsavelEntradaId String?
+  responsavelEntrada   Usuario?     @relation("FichaEntrada", fields: [responsavelEntradaId], references: [id])
+  saidaEm              DateTime?
+  condicaoSaida        String?
+  observacoesSaida     String?
+  responsavelSaidaId   String?
+  responsavelSaida     Usuario?     @relation("FichaSaida", fields: [responsavelSaidaId], references: [id])
+}
+
+// ───────────────────────── Estoque ─────────────────────────
+
+enum TipoProduto {
+  MEDICAMENTO
+  VACINA
+  INSUMO
+  PRODUTO_LOJA
+  RACAO
+}
+
+enum TipoMovimento {
+  ENTRADA_COMPRA
+  SAIDA_VENDA
+  SAIDA_ATENDIMENTO
+  AJUSTE
+  PERDA
+  VENCIDO
+  TRANSFERENCIA
+}
+
+enum StatusCompra {
+  RASCUNHO
+  RECEBIDA
+  CANCELADA
+}
+
+model Produto {
+  id                  String      @id @default(cuid())
+  nome                String
+  sku                 String?     @unique
+  codigoBarras        String?
+  tipo                TipoProduto
+  unidadeMedida       String      @default("un")
+  controlado          Boolean     @default(false)
+  listaControle       String?
+  principioAtivo      String?
+  concentracaoMgPorMl Decimal?    @db.Decimal(10, 3)
+  doseMgKgPadrao      Decimal?    @db.Decimal(10, 3)
+  precoVendaCentavos  Int         @default(0)
+  custoCentavos       Int         @default(0)
+  estoqueMinimo       Decimal     @default(0) @db.Decimal(12, 3)
+  vendavel            Boolean     @default(true)
+  ativo               Boolean     @default(true)
+
+  lotes               Lote[]
+  receitaItems        ReceitaItem[]
+  prescricaoItems     PrescricaoItem[]
+  movimentoEstoques   MovimentoEstoque[]
+  compraItems         CompraItem[]
+  registroControlados RegistroControlado[]
+  orcamentoItems      OrcamentoItem[]
+  vendaItems          VendaItem[]
+
+  @@index([nome])
+}
+
+model Lote {
+  id                String             @id @default(cuid())
+  produtoId         String
+  produto           Produto            @relation(fields: [produtoId], references: [id])
+  unidadeId         String
+  unidade           Unidade            @relation(fields: [unidadeId], references: [id])
+  codigo            String
+  validade          DateTime?          @db.Date
+  /// Saldo do lote. Sempre igual à soma dos movimentos; atualizado na mesma transação.
+  quantidade        Decimal            @default(0) @db.Decimal(12, 3)
+  custoCentavos     Int?
+  criadoEm          DateTime           @default(now())
+  aplicacaos        Aplicacao[]
+  movimentoEstoques MovimentoEstoque[]
+
+  @@unique([produtoId, unidadeId, codigo])
+  @@index([validade])
+}
+
+/// Livro-razão do estoque. Quantidade positiva entra, negativa sai.
+model MovimentoEstoque {
+  id                 String              @id @default(cuid())
+  unidadeId          String
+  unidade            Unidade             @relation(fields: [unidadeId], references: [id])
+  produtoId          String
+  produto            Produto             @relation(fields: [produtoId], references: [id])
+  loteId             String?
+  lote               Lote?               @relation(fields: [loteId], references: [id])
+  tipo               TipoMovimento
+  quantidade         Decimal             @db.Decimal(12, 3)
+  custoCentavos      Int?
+  atendimentoId      String?
+  atendimento        Atendimento?        @relation(fields: [atendimentoId], references: [id])
+  vendaItemId        String?
+  vendaItem          VendaItem?          @relation(fields: [vendaItemId], references: [id])
+  compraItemId       String?
+  compraItem         CompraItem?         @relation(fields: [compraItemId], references: [id])
+  usuarioId          String?
+  usuario            Usuario?            @relation(fields: [usuarioId], references: [id])
+  observacao         String?
+  criadoEm           DateTime            @default(now())
+  registroControlado RegistroControlado?
+
+  @@index([produtoId, criadoEm])
+}
+
+model Fornecedor {
+  id          String       @id @default(cuid())
+  nome        String
+  cnpj        String?
+  telefone    String?
+  email       String?
+  contato     String?
+  ativo       Boolean      @default(true)
+  compras     Compra[]
+  lancamentos Lancamento[]
+}
+
+model Compra {
+  id            String       @id @default(cuid())
+  unidadeId     String
+  unidade       Unidade      @relation(fields: [unidadeId], references: [id])
+  fornecedorId  String
+  fornecedor    Fornecedor   @relation(fields: [fornecedorId], references: [id])
+  numeroNota    String?
+  status        StatusCompra @default(RASCUNHO)
+  totalCentavos Int          @default(0)
+  emitidaEm     DateTime?
+  recebidaEm    DateTime?
+  criadoPorId   String?
+  criadoPor     Usuario?     @relation(fields: [criadoPorId], references: [id])
+  criadoEm      DateTime     @default(now())
+
+  itens       CompraItem[]
+  lancamentos Lancamento[]
+}
+
+model CompraItem {
+  id                    String             @id @default(cuid())
+  compraId              String
+  compra                Compra             @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  produtoId             String
+  produto               Produto            @relation(fields: [produtoId], references: [id])
+  quantidade            Decimal            @db.Decimal(12, 3)
+  custoUnitarioCentavos Int
+  loteCodigo            String?
+  validade              DateTime?          @db.Date
+  movimentoEstoques     MovimentoEstoque[]
+}
+
+/// Livro de medicamentos controlados: uma linha por movimento, com saldo corrente.
+model RegistroControlado {
+  id            String           @id @default(cuid())
+  unidadeId     String
+  unidade       Unidade          @relation(fields: [unidadeId], references: [id])
+  produtoId     String
+  produto       Produto          @relation(fields: [produtoId], references: [id])
+  movimentoId   String           @unique
+  movimento     MovimentoEstoque @relation(fields: [movimentoId], references: [id])
+  receitaId     String?
+  receita       Receita?         @relation(fields: [receitaId], references: [id])
+  petId         String?
+  pet           Pet?             @relation(fields: [petId], references: [id])
+  veterinarioId String?
+  veterinario   Usuario?         @relation(fields: [veterinarioId], references: [id])
+  quantidade    Decimal          @db.Decimal(12, 3)
+  saldoApos     Decimal          @db.Decimal(12, 3)
+  criadoEm      DateTime         @default(now())
+
+  @@index([produtoId, criadoEm])
+}
+
+// ───────────────────────── Vendas e financeiro ─────────────────────────
+
+enum StatusOrcamento {
+  ABERTO
+  APROVADO
+  RECUSADO
+  EXPIRADO
+  CONVERTIDO
+}
+
+enum StatusVenda {
+  ABERTA
+  PARCIAL
+  PAGA
+  CANCELADA
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  CARTAO_DEBITO
+  CARTAO_CREDITO
+  BOLETO
+  CREDITO_PLANO
+}
+
+enum StatusPagamento {
+  PENDENTE
+  CONFIRMADO
+  ESTORNADO
+}
+
+enum TipoMovimentoCaixa {
+  SUPRIMENTO
+  SANGRIA
+  RECEBIMENTO
+  TROCO
+  ESTORNO
+}
+
+enum TipoCategoria {
+  RECEITA
+  DESPESA
+}
+
+enum GrupoDre {
+  RECEITA_SERVICOS
+  RECEITA_PRODUTOS
+  RECEITA_PLANOS
+  CUSTO_MERCADORIA
+  DESPESA_PESSOAL
+  DESPESA_OPERACIONAL
+  IMPOSTOS
+  OUTROS
+}
+
+enum TipoLancamento {
+  PAGAR
+  RECEBER
+}
+
+enum StatusLancamento {
+  ABERTO
+  PAGO
+  CANCELADO
+}
+
+enum TipoNota {
+  NFSE
+  NFCE
+}
+
+enum StatusNota {
+  PENDENTE
+  AGUARDANDO_CONFIGURACAO
+  EMITIDA
+  ERRO
+  CANCELADA
+}
+
+model Orcamento {
+  id               String          @id @default(cuid())
+  numero           Int             @unique @default(autoincrement())
+  unidadeId        String
+  unidade          Unidade         @relation(fields: [unidadeId], references: [id])
+  tutorId          String
+  tutor            Tutor           @relation(fields: [tutorId], references: [id])
+  petId            String?
+  pet              Pet?            @relation(fields: [petId], references: [id])
+  status           StatusOrcamento @default(ABERTO)
+  validoAte        DateTime?       @db.Date
+  descontoCentavos Int             @default(0)
+  totalCentavos    Int             @default(0)
+  observacoes      String?
+  criadoPorId      String
+  criadoPor        Usuario         @relation(fields: [criadoPorId], references: [id])
+  criadoEm         DateTime        @default(now())
+
+  itens OrcamentoItem[]
+  venda Venda?
+}
+
+model OrcamentoItem {
+  id                    String    @id @default(cuid())
+  orcamentoId           String
+  orcamento             Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  servicoId             String?
+  servico               Servico?  @relation(fields: [servicoId], references: [id])
+  produtoId             String?
+  produto               Produto?  @relation(fields: [produtoId], references: [id])
+  descricao             String
+  quantidade            Decimal   @db.Decimal(12, 3)
+  precoUnitarioCentavos Int
+  descontoCentavos      Int       @default(0)
+}
+
+model Venda {
+  id               String       @id @default(cuid())
+  numero           Int          @unique @default(autoincrement())
+  unidadeId        String
+  unidade          Unidade      @relation(fields: [unidadeId], references: [id])
+  tutorId          String?
+  tutor            Tutor?       @relation(fields: [tutorId], references: [id])
+  petId            String?
+  pet              Pet?         @relation(fields: [petId], references: [id])
+  orcamentoId      String?      @unique
+  orcamento        Orcamento?   @relation(fields: [orcamentoId], references: [id])
+  atendimentoId    String?
+  atendimento      Atendimento? @relation(fields: [atendimentoId], references: [id])
+  status           StatusVenda  @default(ABERTA)
+  subtotalCentavos Int          @default(0)
+  descontoCentavos Int          @default(0)
+  totalCentavos    Int          @default(0)
+  vendedorId       String?
+  vendedor         Usuario?     @relation(fields: [vendedorId], references: [id])
+  criadoEm         DateTime     @default(now())
+  fechadaEm        DateTime?
+
+  itens       VendaItem[]
+  pagamentos  Pagamento[]
+  lancamentos Lancamento[]
+  notaFiscals NotaFiscal[]
+
+  @@index([criadoEm])
+  @@index([tutorId])
+}
+
+model VendaItem {
+  id                    String             @id @default(cuid())
+  vendaId               String
+  venda                 Venda              @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  servicoId             String?
+  servico               Servico?           @relation(fields: [servicoId], references: [id])
+  produtoId             String?
+  produto               Produto?           @relation(fields: [produtoId], references: [id])
+  descricao             String
+  quantidade            Decimal            @db.Decimal(12, 3)
+  precoUnitarioCentavos Int
+  descontoCentavos      Int                @default(0)
+  totalCentavos         Int
+  /// Quem executou o serviço; base da comissão.
+  profissionalId        String?
+  profissional          Usuario?           @relation(fields: [profissionalId], references: [id])
+  contratoId            String?
+  contrato              Contrato?          @relation(fields: [contratoId], references: [id])
+  cobertoCentavos       Int                @default(0)
+  pacoteCredito         PacoteCredito?
+  movimentoEstoques     MovimentoEstoque[]
+  comissao              Comissao?
+}
+
+model Pagamento {
+  id            String          @id @default(cuid())
+  vendaId       String?
+  venda         Venda?          @relation(fields: [vendaId], references: [id])
+  cobrancaId    String?
+  cobranca      Cobranca?       @relation(fields: [cobrancaId], references: [id])
+  caixaId       String?
+  caixa         Caixa?          @relation(fields: [caixaId], references: [id])
+  forma         FormaPagamento
+  valorCentavos Int
+  parcelas      Int             @default(1)
+  status        StatusPagamento @default(CONFIRMADO)
+  provedor      String?
+  provedorId    String?
+  pagoEm        DateTime?
+  criadoEm      DateTime        @default(now())
+
+  parcelasLista   Parcela[]
+  movimentoCaixas MovimentoCaixa[]
+}
+
+model Parcela {
+  id            String      @id @default(cuid())
+  pagamentoId   String
+  pagamento     Pagamento   @relation(fields: [pagamentoId], references: [id], onDelete: Cascade)
+  numero        Int
+  valorCentavos Int
+  vencimento    DateTime    @db.Date
+  lancamentoId  String?     @unique
+  lancamento    Lancamento? @relation(fields: [lancamentoId], references: [id])
+
+  @@unique([pagamentoId, numero])
+}
+
+model Caixa {
+  id                     String    @id @default(cuid())
+  unidadeId              String
+  unidade                Unidade   @relation(fields: [unidadeId], references: [id])
+  operadorId             String
+  operador               Usuario   @relation(fields: [operadorId], references: [id])
+  abertoEm               DateTime  @default(now())
+  fechadoEm              DateTime?
+  saldoInicialCentavos   Int       @default(0)
+  saldoInformadoCentavos Int?
+  diferencaCentavos      Int?
+  observacoes            String?
+
+  movimentos MovimentoCaixa[]
+  pagamentos Pagamento[]
+}
+
+model MovimentoCaixa {
+  id            String             @id @default(cuid())
+  caixaId       String
+  caixa         Caixa              @relation(fields: [caixaId], references: [id])
+  tipo          TipoMovimentoCaixa
+  valorCentavos Int
+  pagamentoId   String?
+  pagamento     Pagamento?         @relation(fields: [pagamentoId], references: [id])
+  descricao     String?
+  usuarioId     String
+  usuario       Usuario            @relation(fields: [usuarioId], references: [id])
+  criadoEm      DateTime           @default(now())
+}
+
+model CategoriaFinanceira {
+  id          String        @id @default(cuid())
+  nome        String        @unique
+  tipo        TipoCategoria
+  grupoDre    GrupoDre
+  ativo       Boolean       @default(true)
+  lancamentos Lancamento[]
+}
+
+/// Contas a pagar e a receber na mesma tabela.
+model Lancamento {
+  id                String               @id @default(cuid())
+  unidadeId         String
+  unidade           Unidade              @relation(fields: [unidadeId], references: [id])
+  tipo              TipoLancamento
+  categoriaId       String?
+  categoria         CategoriaFinanceira? @relation(fields: [categoriaId], references: [id])
+  descricao         String
+  valorCentavos     Int
+  vencimento        DateTime             @db.Date
+  competencia       DateTime?            @db.Date
+  status            StatusLancamento     @default(ABERTO)
+  pagoEm            DateTime?
+  valorPagoCentavos Int?
+  formaPagamento    FormaPagamento?
+  tutorId           String?
+  tutor             Tutor?               @relation(fields: [tutorId], references: [id])
+  fornecedorId      String?
+  fornecedor        Fornecedor?          @relation(fields: [fornecedorId], references: [id])
+  vendaId           String?
+  venda             Venda?               @relation(fields: [vendaId], references: [id])
+  compraId          String?
+  compra            Compra?              @relation(fields: [compraId], references: [id])
+  observacao        String?
+  criadoEm          DateTime             @default(now())
+  parcela           Parcela?
+  cobranca          Cobranca?
+
+  @@index([tipo, status, vencimento])
+}
+
+model RegraComissao {
+  id         String            @id @default(cuid())
+  usuarioId  String?
+  usuario    Usuario?          @relation(fields: [usuarioId], references: [id])
+  servicoId  String?
+  servico    Servico?          @relation(fields: [servicoId], references: [id])
+  categoria  CategoriaServico?
+  percentual Decimal           @db.Decimal(5, 2)
+  ativo      Boolean           @default(true)
+}
+
+model Comissao {
+  id            String    @id @default(cuid())
+  usuarioId     String
+  usuario       Usuario   @relation(fields: [usuarioId], references: [id])
+  vendaItemId   String    @unique
+  vendaItem     VendaItem @relation(fields: [vendaItemId], references: [id])
+  baseCentavos  Int
+  percentual    Decimal   @db.Decimal(5, 2)
+  valorCentavos Int
+  competencia   DateTime  @db.Date
+  pagaEm        DateTime?
+}
+
+model NotaFiscal {
+  id        String     @id @default(cuid())
+  unidadeId String
+  unidade   Unidade    @relation(fields: [unidadeId], references: [id])
+  vendaId   String
+  venda     Venda      @relation(fields: [vendaId], references: [id])
+  tipo      TipoNota
+  status    StatusNota @default(PENDENTE)
+  numero    String?
+  chave     String?
+  provedor  String?
+  payload   Json?
+  resposta  Json?
+  pdfUrl    String?
+  criadoEm  DateTime   @default(now())
+  emitidaEm DateTime?
+}
+
+// ───────────────────────── Planos de saúde pet ─────────────────────────
+
+enum StatusContrato {
+  ATIVO
+  SUSPENSO
+  CANCELADO
+}
+
+enum StatusCobranca {
+  ABERTA
+  PAGA
+  CANCELADA
+}
+
+model Plano {
+  id                  String  @id @default(cuid())
+  nome                String
+  descricao           String?
+  mensalidadeCentavos Int
+  carenciaDias        Int     @default(30)
+  ativo               Boolean @default(true)
+
+  coberturas PlanoCobertura[]
+  contratoes Contrato[]
+}
+
+model PlanoCobertura {
+  id           String            @id @default(cuid())
+  planoId      String
+  plano        Plano             @relation(fields: [planoId], references: [id], onDelete: Cascade)
+  servicoId    String?
+  servico      Servico?          @relation(fields: [servicoId], references: [id])
+  categoria    CategoriaServico?
+  percentual   Int               @default(100)
+  limiteAnual  Int?
+  carenciaDias Int?
+}
+
+model Contrato {
+  id            String         @id @default(cuid())
+  planoId       String
+  plano         Plano          @relation(fields: [planoId], references: [id])
+  tutorId       String
+  tutor         Tutor          @relation(fields: [tutorId], references: [id])
+  petId         String
+  pet           Pet            @relation(fields: [petId], references: [id])
+  status        StatusContrato @default(ATIVO)
+  inicio        DateTime       @db.Date
+  fim           DateTime?      @db.Date
+  diaVencimento Int            @default(10)
+  criadoEm      DateTime       @default(now())
+
+  cobrancas  Cobranca[]
+  vendaItems VendaItem[]
+}
+
+model Cobranca {
+  id            String         @id @default(cuid())
+  contratoId    String
+  contrato      Contrato       @relation(fields: [contratoId], references: [id])
+  competencia   DateTime       @db.Date
+  valorCentavos Int
+  vencimento    DateTime       @db.Date
+  status        StatusCobranca @default(ABERTA)
+  lancamentoId  String?        @unique
+  lancamento    Lancamento?    @relation(fields: [lancamentoId], references: [id])
+  provedorId    String?
+  pagaEm        DateTime?
+  pagamentos    Pagamento[]
+
+  @@unique([contratoId, competencia])
+}
+
+// ───────────────────────── Comunicação ─────────────────────────
+
+enum Canal {
+  WHATSAPP
+  EMAIL
+}
+
+enum TipoLembrete {
+  CONSULTA
+  CONFIRMACAO
+  VACINA
+  RETORNO
+  ANIVERSARIO
+  BOLETIM
+}
+
+enum StatusMensagem {
+  PENDENTE
+  AGUARDANDO_CONFIGURACAO
+  ENVIADA
+  ENTREGUE
+  ERRO
+  CANCELADA
+}
+
+enum StatusCampanha {
+  RASCUNHO
+  AGENDADA
+  ENVIANDO
+  CONCLUIDA
+}
+
+model ModeloMensagem {
+  id             String          @id @default(cuid())
+  chave          String          @unique
+  nome           String
+  canal          Canal
+  assunto        String?
+  corpo          String
+  ativo          Boolean         @default(true)
+  regraLembretes RegraLembrete[]
+}
+
+model RegraLembrete {
+  id                String         @id @default(cuid())
+  tipo              TipoLembrete
+  canal             Canal
+  antecedenciaHoras Int
+  modeloId          String
+  modelo            ModeloMensagem @relation(fields: [modeloId], references: [id])
+  ativo             Boolean        @default(true)
+}
+
+/// Fila de saída. Sem provedor configurado a mensagem fica AGUARDANDO_CONFIGURACAO, nunca ENVIADA.
+model Mensagem {
+  id            String         @id @default(cuid())
+  canal         Canal
+  tutorId       String?
+  tutor         Tutor?         @relation(fields: [tutorId], references: [id])
+  destino       String
+  assunto       String?
+  corpo         String
+  status        StatusMensagem @default(PENDENTE)
+  tentativas    Int            @default(0)
+  erro          String?
+  provedorId    String?
+  agendadaPara  DateTime       @default(now())
+  enviadaEm     DateTime?
+  agendamentoId String?
+  agendamento   Agendamento?   @relation(fields: [agendamentoId], references: [id])
+  campanhaId    String?
+  campanha      Campanha?      @relation(fields: [campanhaId], references: [id])
+  /// Impede o mesmo lembrete duas vezes (ex.: "consulta:<id>:24h:whatsapp").
+  chaveUnica    String?        @unique
+  criadoEm      DateTime       @default(now())
+
+  @@index([status, agendadaPara])
+}
+
+model Segmento {
+  id        String     @id @default(cuid())
+  nome      String
+  filtros   Json
+  campanhas Campanha[]
+}
+
+model Campanha {
+  id           String         @id @default(cuid())
+  nome         String
+  canal        Canal
+  segmentoId   String?
+  segmento     Segmento?      @relation(fields: [segmentoId], references: [id])
+  assunto      String?
+  corpo        String
+  status       StatusCampanha @default(RASCUNHO)
+  agendadaPara DateTime?
+  criadoPorId  String
+  criadoPor    Usuario        @relation(fields: [criadoPorId], references: [id])
+  criadoEm     DateTime       @default(now())
+  mensagems    Mensagem[]
+}
+
+// ───────────────────────── Conteúdo e configurações ─────────────────────────
+
+enum TipoDocumento {
+  TERMO
+  RECEITA
+  ATESTADO
+  BOLETIM
+}
+
+model Post {
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  titulo       String
+  resumo       String
+  corpo        String
+  tags         String[]
+  autorId      String?
+  autor        Usuario?  @relation(fields: [autorId], references: [id])
+  publicadoEm  DateTime?
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+
+  @@index([publicadoEm])
+}
+
+model Depoimento {
+  id       String   @id @default(cuid())
+  autor    String
+  pet      String?
+  texto    String
+  aprovado Boolean  @default(false)
+  ordem    Int      @default(0)
+  criadoEm DateTime @default(now())
+}
+
+/// Ambiente da clínica. x, y, largura e altura posicionam a sala na planta (grade 0–100).
+model Ambiente {
+  id        String  @id @default(cuid())
+  unidadeId String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+  nome      String
+  sigla     String
+  descricao String
+  fotoUrl   String?
+  x         Int
+  y         Int
+  largura   Int
+  altura    Int
+  ordem     Int     @default(0)
+}
+
+model ContatoRecebido {
+  id       String   @id @default(cuid())
+  nome     String
+  email    String?
+  telefone String?
+  mensagem String
+  lido     Boolean  @default(false)
+  criadoEm DateTime @default(now())
+}
+
+model ModeloDocumento {
+  id    String        @id @default(cuid())
+  chave String        @unique
+  nome  String
+  tipo  TipoDocumento
+  corpo String
+  ativo Boolean       @default(true)
+}
+
+model Configuracao {
+  chave String @id
+  valor Json
+}

@@ -1,0 +1,428 @@
+@import "tailwindcss";
+
+/* Identidade "Caramelo de plantão".
+   Quatro cores, tiradas do cachorro: osso (papel), focinho (tinta), caramelo (só ele), língua (alerta e ação).
+   Texto só em pares AA: focinho sobre osso/língua/caramelo, osso ou língua sobre focinho. */
+@theme inline {
+  --color-osso: #f0e9dc;
+  --color-osso-2: #e7dfcf;
+  --color-focinho: #18130f;
+  --color-caramelo: #c9782a;
+  --color-lingua: #ff4f8b;
+  --color-regua: rgb(24 19 15 / 0.24);
+  --font-display: var(--fonte-display), "Arial Narrow", Impact, sans-serif;
+  --font-texto: var(--fonte-texto), Arial, sans-serif;
+  --font-mono: var(--fonte-mono), ui-monospace, Consolas, monospace;
+  --font-sans: var(--fonte-texto), Arial, sans-serif;
+}
+
+@property --wdth {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 50;
+}
+@property --wght {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 900;
+}
+
+html {
+  background: var(--color-osso);
+  color: var(--color-focinho);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  font-family: var(--font-texto);
+  font-size: 17px;
+  line-height: 1.55;
+  overflow-x: clip;
+}
+::selection {
+  background: var(--color-lingua);
+  color: var(--color-focinho);
+}
+:focus-visible {
+  outline: 3px solid var(--color-focinho);
+  outline-offset: 3px;
+}
+.sobre-escuro :focus-visible {
+  outline-color: var(--color-lingua);
+}
+
+/* Tudo abaixo fica na camada de componentes, para os utilitários do Tailwind poderem sobrepor. */
+@layer components {
+/* ───── Tipografia ───── */
+.letreiro {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" var(--wdth), "wght" var(--wght);
+  text-transform: uppercase;
+  line-height: 0.82;
+  letter-spacing: -0.005em;
+}
+.letreiro-largo {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 118, "wght" 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+.rotulo {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.medida {
+  max-width: 62ch;
+}
+
+/* ───── Estrutura ───── */
+.dentro {
+  width: 100%;
+  max-width: 1360px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 56px);
+}
+.pauta {
+  border-top: 2px solid var(--color-focinho);
+}
+.pauta-fina {
+  border-top: 1px solid var(--color-regua);
+}
+
+/* ───── Carimbo: o botão. Bate ao clicar. ───── */
+.carimbo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 118, "wght" 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  font-size: 15px;
+  padding: 0.95em 1.4em;
+  background: var(--color-focinho);
+  color: var(--color-osso);
+  border: 2px solid var(--color-focinho);
+  box-shadow: 5px 5px 0 var(--color-lingua);
+  transform: rotate(-1.5deg);
+  transition:
+    transform 90ms cubic-bezier(0.3, 0, 0.2, 1),
+    box-shadow 90ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+.carimbo:hover {
+  transform: rotate(0deg) translate(-1px, -1px);
+  box-shadow: 7px 7px 0 var(--color-lingua);
+}
+.carimbo:active {
+  transform: rotate(-2.5deg) translate(5px, 5px);
+  box-shadow: 0 0 0 var(--color-lingua);
+}
+.carimbo-rosa {
+  background: var(--color-lingua);
+  color: var(--color-focinho);
+  box-shadow: 5px 5px 0 var(--color-focinho);
+}
+.carimbo-rosa:hover {
+  box-shadow: 7px 7px 0 var(--color-focinho);
+}
+.carimbo-rosa:active {
+  box-shadow: 0 0 0 var(--color-focinho);
+}
+.carimbo-vazado {
+  background: transparent;
+  color: var(--color-focinho);
+  box-shadow: none;
+  transform: none;
+}
+.carimbo-vazado:hover {
+  background: var(--color-focinho);
+  color: var(--color-osso);
+  box-shadow: none;
+  transform: none;
+}
+.carimbo-vazado:active {
+  transform: translate(2px, 2px);
+}
+.carimbo[disabled],
+.carimbo[aria-disabled="true"] {
+  opacity: 1;
+  background: var(--color-osso-2);
+  color: var(--color-focinho);
+  border-style: dashed;
+  box-shadow: none;
+  transform: none;
+  pointer-events: none;
+}
+
+/* ───── Traço: link sublinhado a caneta ───── */
+.traco {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 2px;
+  transition: background-size 260ms cubic-bezier(0.6, 0, 0.2, 1);
+  padding-bottom: 2px;
+}
+.traco:hover,
+.traco:focus-visible,
+.traco[aria-current="page"] {
+  background-size: 100% 2px;
+}
+.traco:active {
+  transform: translateY(1px);
+}
+
+/* ───── Selo: estado em forma de carimbo (a forma diz o estado, não só a cor) ───── */
+.selo {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 10.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 4px 6px 3px;
+  border: 1.5px solid var(--color-focinho);
+  white-space: nowrap;
+}
+.selo-cheio {
+  background: var(--color-focinho);
+  color: var(--color-osso);
+}
+.selo-alerta {
+  background: var(--color-lingua);
+}
+.selo-risco {
+  border-style: dashed;
+  text-decoration: line-through;
+}
+
+/* ───── Campos de formulário: pauta de ficha ───── */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.campo > label,
+.campo > .rotulo-campo {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+.campo input,
+.campo select,
+.campo textarea {
+  font: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--color-focinho);
+  padding: 8px 2px;
+  border-radius: 0;
+  width: 100%;
+  color: inherit;
+}
+.campo textarea {
+  border: 2px solid var(--color-focinho);
+  padding: 10px 12px;
+  min-height: 120px;
+}
+.campo input:focus-visible,
+.campo select:focus-visible,
+.campo textarea:focus-visible {
+  outline: 0;
+  background: var(--color-osso-2);
+  box-shadow: 0 3px 0 var(--color-lingua);
+}
+.campo .erro {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ───── Texto corrido (blog, páginas de serviço) ───── */
+.prosa {
+  font-size: 19px;
+  line-height: 1.6;
+  max-width: 64ch;
+}
+.prosa > * + * {
+  margin-top: 1.1em;
+}
+.prosa h2 {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 70, "wght" 850;
+  text-transform: uppercase;
+  font-size: 1.7em;
+  line-height: 1;
+  margin-top: 1.8em;
+}
+.prosa ul {
+  list-style: square;
+  padding-left: 1.2em;
+}
+.prosa li + li {
+  margin-top: 0.4em;
+}
+.prosa a {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.prosa strong {
+  font-weight: 700;
+}
+
+/* ───── Cursor próprio (só com mouse) ───── */
+@media (pointer: fine) {
+  html.tem-cursor,
+  html.tem-cursor * {
+    cursor: none !important;
+  }
+  html.tem-cursor input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  html.tem-cursor textarea {
+    cursor: text !important;
+  }
+}
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  pointer-events: none;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  display: none;
+}
+html.tem-cursor .cursor {
+  display: block;
+}
+.cursor .ponto {
+  position: absolute;
+  inset: 11px;
+  border-radius: 50%;
+  background: var(--color-focinho);
+  transition: transform 140ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+.cursor .pata {
+  position: absolute;
+  inset: 0;
+  transform: scale(0) rotate(-30deg);
+  transition: transform 180ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.cursor.sobre .ponto {
+  transform: scale(0);
+}
+.cursor.sobre .pata {
+  transform: scale(1) rotate(-12deg);
+}
+.cursor.aperta .pata {
+  transform: scale(0.8) rotate(-12deg);
+}
+html.sobre-campo .cursor {
+  visibility: hidden;
+}
+
+/* ───── Palco do cachorro ───── */
+.palco {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  view-transition-name: palco;
+}
+.frente {
+  position: relative;
+  z-index: 40;
+}
+html.cao-3d .cao-estatico {
+  visibility: hidden;
+}
+
+}
+
+/* ───── Transição entre páginas: a ficha desliza ───── */
+::view-transition-group(palco) {
+  z-index: 30;
+  animation: none;
+}
+::view-transition-old(palco),
+::view-transition-new(palco) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(palco) {
+  display: none;
+}
+::view-transition-old(.ficha-avanca) {
+  animation: 380ms cubic-bezier(0.7, 0, 0.3, 1) both ficha-sai-esq;
+}
+::view-transition-new(.ficha-avanca) {
+  animation: 380ms cubic-bezier(0.7, 0, 0.3, 1) both ficha-entra-dir;
+}
+::view-transition-old(.ficha-volta) {
+  animation: 380ms cubic-bezier(0.7, 0, 0.3, 1) both ficha-sai-dir;
+}
+::view-transition-new(.ficha-volta) {
+  animation: 380ms cubic-bezier(0.7, 0, 0.3, 1) both ficha-entra-esq;
+}
+@keyframes ficha-sai-esq {
+  to {
+    translate: -100vw 0;
+  }
+}
+@keyframes ficha-entra-dir {
+  from {
+    translate: 100vw 0;
+  }
+}
+@keyframes ficha-sai-dir {
+  to {
+    translate: 100vw 0;
+  }
+}
+@keyframes ficha-entra-esq {
+  from {
+    translate: -100vw 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Mapa: os ladrilhos do OpenStreetMap ganham o tom do papel. */
+.mapa .leaflet-tile-pane {
+  filter: grayscale(1) sepia(0.35) contrast(1.05) brightness(1.02);
+}
+.mapa .leaflet-container,
+.mapa.leaflet-container {
+  background: var(--color-osso-2);
+  font-family: var(--font-mono);
+}
+.mapa .leaflet-control-zoom a {
+  border-radius: 0;
+  border: 2px solid var(--color-focinho);
+  color: var(--color-focinho);
+  background: var(--color-osso);
+}

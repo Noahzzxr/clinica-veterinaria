@@ -1,0 +1,358 @@
+/* Estilos do site público que não cabem em utilitários: tipografia de cartaz e estados animados. */
+
+@layer components {
+/* ───── Abertura ───── */
+.manchete {
+  font-size: min(21.5vw, 31svh);
+}
+.manchete .linha {
+  display: block;
+  white-space: nowrap;
+}
+.bate {
+  display: inline-block;
+  transform-origin: 30% 60%;
+  animation: bate 300ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 40ms);
+}
+@keyframes bate {
+  0% {
+    opacity: 0;
+    transform: scale(1.7) rotate(-4deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.96) rotate(0.6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A palavra em que o cachorro encosta: começa larga e encolhe quando ele senta. */
+.amassa {
+  --wdth: 80;
+  font-variation-settings: "wdth" var(--wdth), "wght" var(--wght);
+}
+
+/* ───── Títulos de seção ───── */
+.titulo {
+  font-size: clamp(54px, 10.5vw, 168px);
+}
+.titulo-pagina {
+  font-size: clamp(64px, 15vw, 230px);
+}
+
+/* ───── Serviços: lista em tamanho de cartaz ───── */
+.servico {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 24px;
+  align-items: baseline;
+  padding-block: 18px 22px;
+}
+@media (min-width: 900px) {
+  .servico {
+    grid-template-columns: 9rem minmax(0, 1fr) auto;
+  }
+}
+.servico .nome {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" var(--wdth), "wght" var(--wght);
+  text-transform: uppercase;
+  line-height: 0.86;
+  font-size: clamp(40px, 7.2vw, 108px);
+  transition: --wdth 320ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+.servico:hover .nome,
+.servico:focus-visible .nome {
+  --wdth: 74;
+}
+.servico:active .nome {
+  --wdth: 62;
+}
+.caneta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  width: 100%;
+  height: 12px;
+  overflow: visible;
+}
+.caneta path {
+  fill: none;
+  stroke: var(--color-focinho);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 620ms cubic-bezier(0.6, 0, 0.2, 1);
+}
+.servico:hover .caneta path,
+.servico:focus-visible .caneta path,
+.servico.ativa .caneta path {
+  stroke-dashoffset: 0;
+}
+
+/* ───── Plantão ───── */
+.faixa {
+  font-size: min(27vw, 42svh);
+  white-space: nowrap;
+  will-change: transform;
+}
+
+/* ───── Vacinas: linha do tempo ───── */
+.trilho {
+  position: relative;
+}
+.trilho .fio {
+  position: absolute;
+  background: var(--color-focinho);
+  transform-origin: left top;
+}
+.dose .marco {
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--color-focinho);
+  background: var(--color-osso-2);
+  border-radius: 50%;
+}
+.dose .cartao {
+  border: 2px solid var(--color-focinho);
+  background: var(--color-osso);
+  padding: 8px 10px 9px;
+  transform: rotate(var(--giro, -2deg));
+}
+@media (max-width: 767px) {
+  .trilho {
+    padding-left: 34px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .trilho .fio {
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+  .dose {
+    position: relative;
+  }
+  .dose .marco {
+    position: absolute;
+    left: -34px;
+    top: 14px;
+  }
+  .pegadas {
+    display: none;
+  }
+}
+@media (min-width: 768px) {
+  .vacinas {
+    height: 250svh;
+  }
+  .vacinas .quadro {
+    position: sticky;
+    top: 2.25rem;
+    height: calc(100svh - 2.25rem);
+    overflow: hidden;
+  }
+  .trilho {
+    position: absolute;
+    left: clamp(16px, 4vw, 56px);
+    right: clamp(16px, 4vw, 56px);
+    top: 66%;
+    height: 0;
+  }
+  .trilho .fio {
+    left: 0;
+    right: 0;
+    top: -2px;
+    height: 4px;
+  }
+  .dose {
+    position: absolute;
+    top: 0;
+    left: calc((var(--n) + 0.5) / var(--total) * 100%);
+    width: 0;
+  }
+  .dose .marco {
+    position: absolute;
+    left: -8px;
+    top: -8px;
+  }
+  .dose .cartao {
+    position: absolute;
+    left: 0;
+    bottom: 26px;
+    width: max-content;
+    max-width: 12.5vw;
+    transform: translateX(-50%) rotate(var(--giro, -2deg));
+    transform-origin: 50% 100%;
+  }
+  .dose:nth-child(even) .cartao {
+    bottom: calc(26px + 5.6rem);
+  }
+  .dose .haste {
+    position: absolute;
+    left: -1px;
+    bottom: 8px;
+    width: 2px;
+    height: 18px;
+    background: var(--color-focinho);
+  }
+  .dose:nth-child(even) .haste {
+    height: calc(18px + 5.6rem);
+  }
+  .dose .idade {
+    position: absolute;
+    top: 18px;
+    left: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .pegadas {
+    position: absolute;
+    inset: 44px 0 auto 0;
+    height: 30px;
+  }
+  .pegadas svg {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    left: calc(var(--p) * 100%);
+    top: calc(var(--lado) * 12px);
+    transform: rotate(90deg);
+  }
+}
+
+/* ───── Equipe: fichas de arquivo ───── */
+.ficha-vet {
+  position: relative;
+  border: 2px solid var(--color-focinho);
+  background: var(--color-osso);
+  transform: rotate(var(--giro, 0deg));
+  transition:
+    transform 220ms cubic-bezier(0.3, 1.4, 0.5, 1),
+    box-shadow 220ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+.ficha-vet::before {
+  content: attr(data-aba);
+  position: absolute;
+  left: -2px;
+  bottom: 100%;
+  border: 2px solid var(--color-focinho);
+  border-bottom: 0;
+  background: var(--color-osso);
+  padding: 5px 12px 3px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ficha-vet:hover,
+.ficha-vet:focus-within {
+  transform: rotate(0deg) translateY(-10px);
+  box-shadow: 8px 8px 0 var(--color-focinho);
+  z-index: 2;
+}
+.retrato {
+  aspect-ratio: 4 / 3;
+  background: var(--color-focinho);
+  color: var(--color-lingua);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.retrato span {
+  font-size: clamp(120px, 15vw, 210px);
+  --wdth: 64;
+  font-variation-settings: "wdth" var(--wdth), "wght" var(--wght);
+  transition: --wdth 320ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+.ficha-vet:hover .retrato span {
+  --wdth: 118;
+}
+
+/* ───── Estrutura: planta ───── */
+.planta rect.comodo {
+  fill: transparent;
+  stroke: var(--color-focinho);
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  transition: fill 120ms;
+}
+.planta text {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 3.1px;
+  letter-spacing: 0.08em;
+  fill: var(--color-focinho);
+  pointer-events: none;
+}
+.comodo-item {
+  transition: padding-left 160ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+.comodo-item:hover {
+  padding-left: 10px;
+}
+
+/* ───── Depoimentos ───── */
+.datilo span {
+  visibility: hidden;
+}
+.datilo span.v {
+  visibility: visible;
+}
+
+/* ───── Blog: cartões ───── */
+.cartao-post {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 2px solid var(--color-focinho);
+  background: var(--color-osso);
+  padding: 22px 22px 26px;
+  min-height: 21rem;
+  transition:
+    transform 200ms cubic-bezier(0.3, 1.4, 0.5, 1),
+    box-shadow 200ms;
+}
+.cartao-post:hover,
+.cartao-post:focus-visible {
+  transform: translate(-4px, -6px) rotate(-0.6deg);
+  box-shadow: 8px 8px 0 var(--color-lingua);
+}
+.cartao-post:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--color-lingua);
+}
+.cartao-post h3 {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 62, "wght" 850;
+  text-transform: uppercase;
+  font-size: clamp(30px, 2.9vw, 44px);
+  line-height: 0.95;
+}
+
+/* ───── Contato: croqui do caminho ───── */
+.croqui .rua {
+  stroke: var(--color-regua);
+  stroke-width: 10;
+  fill: none;
+}
+.croqui .rota {
+  stroke: var(--color-focinho);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: 1;
+}
+}
